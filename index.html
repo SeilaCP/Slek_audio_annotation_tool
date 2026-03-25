@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Praat Annotator — Local</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="shell">
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <span class="logo">▣ Annotator</span>
+  <div class="tsep"></div>
+  <span class="tbfile" id="tbfile">No file loaded</span>
+  <div class="tsep"></div>
+  <button class="btn" onclick="document.getElementById('wav-in').click()">Load .wav</button>
+  <button class="btn" onclick="document.getElementById('tg-in').click()">Load .TextGrid</button>
+  <button class="btn" onclick="document.getElementById('json-in').click()">Load .json</button>
+  <div class="tsep"></div>
+  <div class="pass-grp">
+    <button class="ptab on" data-p="1" onclick="setPass(1)">P1</button>
+    <button class="ptab" data-p="2" onclick="setPass(2)">P2</button>
+    <button class="ptab" data-p="3" onclick="setPass(3)">P3</button>
+    <button class="ptab" data-p="4" onclick="setPass(4)">P4</button>
+    <button class="ptab" data-p="5" onclick="setPass(5)">P5</button>
+  </div>
+  <div class="tsep"></div>
+  <button class="btn hi" onclick="exportTG()">Save .TextGrid</button>
+  <button class="btn" onclick="exportJSON()">Save .json</button>
+  <button class="btn red" onclick="clearAll()">Clear</button>
+
+
+  
+</div>
+
+<div id="main">
+<!-- LEFT -->
+<div id="left">
+  <div class="ph">Files <button class="btn" style="font-size:10px;padding:2px 7px" onclick="document.getElementById('wav-in').click()">+wav</button></div>
+  <div id="dropzone">⬇ Drop .wav or .TextGrid<br><span style="font-size:10px;opacity:.55">click to browse</span></div>
+  <div id="flist"></div>
+  <div class="statsbox">
+    <div class="srow"><span>Files</span><span id="s-files">0</span></div>
+    <div class="srow"><span>Segments</span><span id="s-segs">0</span></div>
+    <div class="srow"><span>Duration</span><span id="s-dur">—</span></div>
+  </div>
+  <div id="hintbox">Load a .wav file to start. Drop a matching .TextGrid to import existing annotations.</div>
+</div>
+
+<!-- CENTER -->
+<div id="center">
+  <div id="viewer">
+    <!-- overview ruler + waveform -->
+    <div class="ruler-wrap" id="ov-ruler-wrap"><canvas class="rcanvas" id="ov-ruler"></canvas></div>
+    <div class="wave-wrap" id="ov-wrap">
+      <canvas class="wcanvas" id="ov-canvas"></canvas>
+      <div id="vp-rect"></div>
+      <div class="ph-line" id="ph-ov"></div>
+    </div>
+    <!-- detail ruler + waveform -->
+    <div class="ruler-wrap" id="dt-ruler-wrap"><canvas class="rcanvas" id="dt-ruler"></canvas></div>
+    <div class="wave-wrap" id="dt-wrap">
+      <canvas class="wcanvas" id="dt-canvas"></canvas>
+      <div class="ph-line" id="ph-dt"></div>
+    </div>
+    <!-- tier lanes -->
+    <div id="tiers-scroll"><div id="tiers-inner"></div></div>
+    <!-- inline transcript editor -->
+    <div id="inline-trans"></div>
+  </div>
+
+  <!-- TRANSPORT -->
+  <div id="transport">
+    <button class="tbtn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+    <button class="tbtn" onclick="seekTo(0)">⏮</button>
+    <button class="tbtn" onclick="skip(-5)">-5s</button>
+    <button class="tbtn" onclick="skip(-1)">-1s</button>
+    <button class="tbtn" onclick="skip(1)">+1s</button>
+    <button class="tbtn" onclick="skip(5)">+5s</button>
+    <div class="cgrp">
+      <label>Spd</label>
+      <input type="range" id="spd" min=".5" max="2" step=".25" value="1" oninput="setSpeed(this.value)">
+      <span class="cval" id="spd-v">1.0×</span>
+    </div>
+    <div class="cgrp">
+      <label>Vol</label>
+      <input type="range" id="vol" min="0" max="1" step=".05" value="1" oninput="setVol(this.value)">
+      <span class="cval" id="vol-v">100%</span>
+    </div>
+    <div id="zgrp">
+      <span id="curtime">0:00.000</span>
+      <button class="zbtn" onclick="zoomIn()">＋</button>
+      <span id="zval">fit</span>
+      <button class="zbtn" onclick="zoomOut()">－</button>
+      <button class="zbtn" onclick="zoomFit()">Fit</button>
+      <button class="zbtn" id="loopbtn" onclick="toggleLoop()">Loop</button>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT -->
+<div id="right">
+  <div class="rtabs">
+    <div class="rtab on" onclick="showRT('trans')">Transcript</div>
+    <div class="rtab" onclick="showRT('tg')">TextGrid</div>
+    <div class="rtab" onclick="showRT('keys')">Keys</div>
+  </div>
+
+  <!-- transcript tab -->
+  <div class="rcontent on" id="rt-trans" style="padding:0;gap:0">
+    <div id="seginfo">Select a segment or drag waveform to create one.</div>
+    <div id="tscroll"><div id="tlist"><div class="empty-t">No segments yet.<br>Drag the waveform or tier lane<br>to create an interval.</div></div></div>
+    <div id="rexport">
+      <button class="btn" onclick="copyTG()" style="flex:1">Copy TG</button>
+      <button class="btn hi" onclick="exportTG()" style="flex:1">Save TG</button>
+      <button class="btn" onclick="exportJSON()">JSON</button>
+    </div>
+  </div>
+
+  <!-- textgrid tab -->
+  <div class="rcontent" id="rt-tg"><pre id="tgpre">// TextGrid preview</pre></div>
+
+  <!-- keys tab -->
+  <div class="rcontent" id="rt-keys">
+    <div class="scg"><div class="scgt">Playback</div>
+      <div class="sci"><span>Play / Pause</span><div class="sck"><kbd>Space</kbd></div></div>
+      <div class="sci"><span>Rewind</span><div class="sck"><kbd>Home</kbd></div></div>
+      <div class="sci"><span>±1s</span><div class="sck"><kbd>←</kbd><kbd>→</kbd></div></div>
+      <div class="sci"><span>±5s</span><div class="sck"><kbd>Shift ←/→</kbd></div></div>
+      <div class="sci"><span>Speed −/+</span><div class="sck"><kbd>[</kbd><kbd>]</kbd></div></div>
+      <div class="sci"><span>Toggle loop</span><div class="sck"><kbd>L</kbd></div></div>
+    </div>
+    <div class="scg"><div class="scgt">Zoom &amp; scroll</div>
+      <div class="sci"><span>Zoom in / out</span><div class="sck"><kbd>+</kbd><kbd>−</kbd></div></div>
+      <div class="sci"><span>Fit all</span><div class="sck"><kbd>F</kbd></div></div>
+      <div class="sci"><span>Scroll</span><div class="sck"><kbd>A</kbd><kbd>D</kbd></div></div>
+      <div class="sci"><span>Center on cursor</span><div class="sck"><kbd>G</kbd></div></div>
+      <div class="sci"><span>Mouse wheel</span><div class="sck"><kbd>scroll</kbd></div></div>
+      <div class="sci"><span>Ctrl+wheel zoom</span><div class="sck"><kbd>Ctrl+scroll</kbd></div></div>
+    </div>
+    <div class="scg"><div class="scgt">Segments</div>
+      <div class="sci"><span>Create</span><div class="sck"><kbd>Drag</kbd></div></div>
+      <div class="sci"><span>Next / Prev</span><div class="sck"><kbd>Tab</kbd><kbd>Shift+Tab</kbd></div></div>
+      <div class="sci"><span>Delete</span><div class="sck"><kbd>Del</kbd></div></div>
+      <div class="sci"><span>Play segment</span><div class="sck"><kbd>Enter</kbd></div></div>
+    </div>
+    <div class="scg"><div class="scgt">Uncertainty markers</div>
+      <div class="sci"><span>Unknown word</span><div class="sck"><kbd>(?)</kbd></div></div>
+      <div class="sci"><span>Guess</span><div class="sck"><kbd>(word?)</kbd></div></div>
+      <div class="sci"><span>Noise event</span><div class="sck"><kbd>[noise]</kbd></div></div>
+      <div class="sci"><span>Silence</span><div class="sck"><kbd>[silence 2s]</kbd></div></div>
+    </div>
+  </div>
+</div>
+</div><!-- #main -->
+</div><!-- #shell -->
+
+<div id="toast"></div>
+<input type="file" id="wav-in" accept=".wav,.mp3,.ogg,.flac" multiple style="display:none">
+<input type="file" id="tg-in" accept=".TextGrid,.textgrid,.txt" style="display:none">
+<input type="file" id="json-in" accept=".json" style="display:none">
+
+<script src="script.js"></script>
+</body>
+</html>
